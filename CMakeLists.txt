@@ -16,14 +16,21 @@ FetchContent_MakeAvailable(googletest)
 
 enable_testing()
 
-add_executable(unit_tests tests/test.cpp src/synthetic_feed.cpp)
+set(LIBRARY_SOURCE_FILES
+    src/instrument_registry.cpp
+    src/order_book.cpp
+    src/synthetic_feed.cpp
+)
 
-target_link_libraries(unit_tests GTest::gtest_main)
+add_library(market_data ${LIBRARY_SOURCE_FILES})
+
+add_executable(unit_tests tests/test.cpp)
+
+target_link_libraries(unit_tests market_data GTest::gtest_main)
 
 include(GoogleTest)
 gtest_discover_tests(unit_tests)
 
 
-set(SOURCE_FILES src/main.cpp src/synthetic_feed.cpp)
-
-add_executable(agentic-lowlatency-lab ${SOURCE_FILES})
+add_executable(agentic-lowlatency-lab src/main.cpp)
+target_link_libraries(agentic-lowlatency-lab market_data)
