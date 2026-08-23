@@ -58,3 +58,15 @@ Definition of Done
 6. Report tests executed.
 7. Report benchmark changes.
 8. Report remaining risks.
+
+Performance Changes
+
+Do not optimize based on assumptions.
+
+Before changing performance-sensitive code:
+
+identify the suspected bottleneck
+measure the current implementation
+explain the proposed optimization
+state the expected performance impact
+only then modify the implementation
