@@ -34,3 +34,6 @@ gtest_discover_tests(unit_tests)
 
 add_executable(agentic-lowlatency-lab src/main.cpp)
 target_link_libraries(agentic-lowlatency-lab market_data)
+
+add_executable(order_book_benchmark benchmarks/order_book_benchmark.cpp)
+target_link_libraries(order_book_benchmark market_data)
