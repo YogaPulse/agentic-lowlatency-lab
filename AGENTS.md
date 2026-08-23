@@ -34,3 +34,16 @@ Use C++23.
 Do not modify unrelated files.
 Prefer simple solutions.
 Avoid unnecessary dependencies.
+
+Low-Latency C++ Rules
+
+Avoid heap allocations on the hot path.
+Avoid unnecessary object copies.
+Avoid shared_ptr unless ownership requires it.
+Avoid virtual dispatch on the hot path.
+Do not introduce mutexes without justification.
+Prefer contiguous memory layouts.
+Consider cache locality.
+Consider branch predictability.
+Prefer explicit ownership.
+Prefer string_view when ownership is not required.
