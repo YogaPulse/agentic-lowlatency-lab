@@ -10,9 +10,11 @@ MarketDataEvent event(
     Side side,
     std::int64_t price_ticks,
     std::uint64_t quantity,
-    std::uint32_t instrument_id = 1)
+    std::uint32_t instrument_id = 1,
+    OrderId order_id = 1)
 {
     return MarketDataEvent{
+        .order_id = order_id,
         .instrument_id = instrument_id,
         .price_ticks = price_ticks,
         .quantity = quantity,
@@ -30,8 +32,26 @@ TEST(SyntheticFeedTest, BasicAssertions) {
     ASSERT_TRUE(event1.price_ticks > 0);
     ASSERT_TRUE(event1.quantity >= 0);
     ASSERT_TRUE(event1.instrument_id != 0);
+    ASSERT_NE(event1.order_id, 0);
 
     ASSERT_TRUE(event2.timestamp_ns > event1.timestamp_ns);
+    ASSERT_GT(event2.order_id, event1.order_id);
+}
+
+TEST(SyntheticFeedTest, SameSeedProducesSameEvents) {
+    SyntheticFeed first_feed{42};
+    SyntheticFeed second_feed{42};
+
+    for (int i = 0; i < 10; ++i)
+    {
+        EXPECT_EQ(first_feed.next().to_str(), second_feed.next().to_str());
+    }
+}
+
+TEST(MarketDataEventTest, FormatsOrderId) {
+    const auto market_event = event(Action::Add, Side::Buy, 100, 10, 1, 42);
+
+    EXPECT_NE(market_event.to_str().find("order_id 42"), std::string::npos);
 }
 
 TEST(OrderBookTest, EmptyBook) {

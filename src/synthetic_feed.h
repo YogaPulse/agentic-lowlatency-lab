@@ -21,6 +21,7 @@ std::mt19937_64 _rng;
     std::discrete_distribution<int> _action_distribution;
 
     std::uint64_t _timestamp_ns{1'000'000'000ULL};
+    OrderId _next_order_id{1};
 
     static constexpr std::uint32_t InstrumentId = 1;
 
@@ -30,4 +31,3 @@ std::mt19937_64 _rng;
     // 0.50 in price units 
     static constexpr std::int64_t TickSize = 50;
 };
-

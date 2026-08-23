@@ -15,6 +15,7 @@ MarketDataEvent SyntheticFeed::next()
 
     MarketDataEvent event{
         .timestamp_ns = _timestamp_ns,
+        .order_id = _next_order_id,
         .instrument_id = InstrumentId,
         .price_ticks = BasePrice + price_offset * TickSize,
         .quantity = _quantity_distribution(_rng),
@@ -27,6 +28,7 @@ MarketDataEvent SyntheticFeed::next()
     };
 
     _timestamp_ns += 100;
+    ++_next_order_id;
 
     if (event.action == Action::Delete)
     {
@@ -35,4 +37,3 @@ MarketDataEvent SyntheticFeed::next()
 
     return event;
 }
-
