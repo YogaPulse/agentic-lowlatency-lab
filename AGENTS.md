@@ -18,11 +18,7 @@ Benchmarks
 
 Repository Structure
 
-src/market_data/ — market-data types and processing.
-
-src/order_book/ — order-book implementation.
-
-src/metrics/ — performance metrics.
+src/ — market-data types, synthetic feed, instrument registry, and order-book implementation.
 
 tests/ — unit tests.
 
