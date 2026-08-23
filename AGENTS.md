@@ -47,3 +47,14 @@ Consider cache locality.
 Consider branch predictability.
 Prefer explicit ownership.
 Prefer string_view when ownership is not required.
+
+Definition of Done
+
+1. Build the project.
+2. Run unit tests.
+3. Run relevant benchmarks.
+4. Review the git diff.
+5. Report modified files.
+6. Report tests executed.
+7. Report benchmark changes.
+8. Report remaining risks.
