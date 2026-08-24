@@ -35,7 +35,6 @@ TEST(SyntheticFeedTest, BasicAssertions) {
     ASSERT_NE(event1.order_id, 0);
 
     ASSERT_TRUE(event2.timestamp_ns > event1.timestamp_ns);
-    ASSERT_GT(event2.order_id, event1.order_id);
 }
 
 TEST(SyntheticFeedTest, SameSeedProducesSameEvents) {
@@ -45,6 +44,16 @@ TEST(SyntheticFeedTest, SameSeedProducesSameEvents) {
     for (int i = 0; i < 10; ++i)
     {
         EXPECT_EQ(first_feed.next().to_str(), second_feed.next().to_str());
+    }
+}
+
+TEST(SyntheticFeedTest, ProducesValidOrderLifecycles) {
+    SyntheticFeed feed{42};
+    OrderBook book{1, 1'024};
+
+    for (int i = 0; i < 10'000; ++i)
+    {
+        EXPECT_EQ(book.apply(feed.next()), ApplyResult::Applied);
     }
 }
 
@@ -116,7 +125,7 @@ TEST(OrderBookTest, DeleteAsk) {
 TEST(OrderBookTest, BestBid) {
     OrderBook book{1};
     ASSERT_EQ(book.apply(event(Action::Add, Side::Buy, 100, 10)), ApplyResult::Applied);
-    ASSERT_EQ(book.apply(event(Action::Add, Side::Buy, 101, 20)), ApplyResult::Applied);
+    ASSERT_EQ(book.apply(event(Action::Add, Side::Buy, 101, 20, 1, 2)), ApplyResult::Applied);
 
     ASSERT_TRUE(book.best_bid().has_value());
     EXPECT_EQ(book.best_bid()->price_ticks, 101);
@@ -126,7 +135,7 @@ TEST(OrderBookTest, BestBid) {
 TEST(OrderBookTest, BestAsk) {
     OrderBook book{1};
     ASSERT_EQ(book.apply(event(Action::Add, Side::Sell, 103, 30)), ApplyResult::Applied);
-    ASSERT_EQ(book.apply(event(Action::Add, Side::Sell, 102, 40)), ApplyResult::Applied);
+    ASSERT_EQ(book.apply(event(Action::Add, Side::Sell, 102, 40, 1, 2)), ApplyResult::Applied);
 
     ASSERT_TRUE(book.best_ask().has_value());
     EXPECT_EQ(book.best_ask()->price_ticks, 102);
@@ -136,12 +145,12 @@ TEST(OrderBookTest, BestAsk) {
 TEST(OrderBookTest, MultiplePriceLevels) {
     OrderBook book{1};
 
-    ASSERT_EQ(book.apply(event(Action::Add, Side::Buy, 99, 10)), ApplyResult::Applied);
-    ASSERT_EQ(book.apply(event(Action::Add, Side::Buy, 100, 20)), ApplyResult::Applied);
-    ASSERT_EQ(book.apply(event(Action::Add, Side::Buy, 101, 30)), ApplyResult::Applied);
-    ASSERT_EQ(book.apply(event(Action::Add, Side::Sell, 102, 40)), ApplyResult::Applied);
-    ASSERT_EQ(book.apply(event(Action::Add, Side::Sell, 103, 50)), ApplyResult::Applied);
-    ASSERT_EQ(book.apply(event(Action::Add, Side::Sell, 104, 60)), ApplyResult::Applied);
+    ASSERT_EQ(book.apply(event(Action::Add, Side::Buy, 99, 10, 1, 1)), ApplyResult::Applied);
+    ASSERT_EQ(book.apply(event(Action::Add, Side::Buy, 100, 20, 1, 2)), ApplyResult::Applied);
+    ASSERT_EQ(book.apply(event(Action::Add, Side::Buy, 101, 30, 1, 3)), ApplyResult::Applied);
+    ASSERT_EQ(book.apply(event(Action::Add, Side::Sell, 102, 40, 1, 4)), ApplyResult::Applied);
+    ASSERT_EQ(book.apply(event(Action::Add, Side::Sell, 103, 50, 1, 5)), ApplyResult::Applied);
+    ASSERT_EQ(book.apply(event(Action::Add, Side::Sell, 104, 60, 1, 6)), ApplyResult::Applied);
 
     EXPECT_EQ(book.level_count(Side::Buy), 3);
     EXPECT_EQ(book.level_count(Side::Sell), 3);
@@ -153,25 +162,71 @@ TEST(OrderBookTest, RejectsInvalidEventsWithoutMutation) {
     OrderBook book{1};
 
     EXPECT_EQ(book.apply(event(Action::Add, Side::Buy, 100, 0)), ApplyResult::InvalidQuantity);
-    EXPECT_EQ(book.apply(event(Action::Update, Side::Buy, 100, 10)), ApplyResult::LevelNotFound);
-    EXPECT_EQ(book.apply(event(Action::Delete, Side::Buy, 100, 0)), ApplyResult::LevelNotFound);
+    EXPECT_EQ(book.apply(event(Action::Add, Side::Buy, 100, 10, 1, 0)), ApplyResult::InvalidOrderId);
+    EXPECT_EQ(book.apply(event(Action::Update, Side::Buy, 100, 10)), ApplyResult::OrderNotFound);
+    EXPECT_EQ(book.apply(event(Action::Delete, Side::Buy, 100, 0)), ApplyResult::OrderNotFound);
     EXPECT_EQ(book.apply(event(Action::Add, Side::Buy, 100, 10, 2)), ApplyResult::InstrumentMismatch);
 
     ASSERT_EQ(book.apply(event(Action::Add, Side::Buy, 100, 10)), ApplyResult::Applied);
-    EXPECT_EQ(book.apply(event(Action::Add, Side::Buy, 100, 20)), ApplyResult::LevelAlreadyExists);
+    EXPECT_EQ(book.apply(event(Action::Add, Side::Buy, 101, 20)), ApplyResult::OrderAlreadyExists);
     EXPECT_EQ(book.apply(event(Action::Update, Side::Buy, 100, 0)), ApplyResult::InvalidQuantity);
     EXPECT_EQ(book.apply(event(Action::Delete, Side::Buy, 100, 1)), ApplyResult::InvalidQuantity);
+    EXPECT_EQ(book.apply(event(Action::Update, Side::Sell, 100, 20)), ApplyResult::OrderAttributesMismatch);
     EXPECT_EQ(book.quantity_at(Side::Buy, 100), 10);
 }
 
 TEST(OrderBookTest, ChangesBestPriceAfterDelete) {
     OrderBook book{1};
     ASSERT_EQ(book.apply(event(Action::Add, Side::Buy, 100, 10)), ApplyResult::Applied);
-    ASSERT_EQ(book.apply(event(Action::Add, Side::Buy, 101, 20)), ApplyResult::Applied);
+    ASSERT_EQ(book.apply(event(Action::Add, Side::Buy, 101, 20, 1, 2)), ApplyResult::Applied);
 
-    ASSERT_EQ(book.apply(event(Action::Delete, Side::Buy, 101, 0)), ApplyResult::Applied);
+    ASSERT_EQ(book.apply(event(Action::Delete, Side::Buy, 101, 0, 1, 2)), ApplyResult::Applied);
     ASSERT_TRUE(book.best_bid().has_value());
     EXPECT_EQ(book.best_bid()->price_ticks, 100);
+}
+
+TEST(OrderBookTest, AggregatesOrdersAtSamePrice) {
+    OrderBook book{1};
+
+    ASSERT_EQ(book.apply(event(Action::Add, Side::Buy, 100, 10, 1, 1)), ApplyResult::Applied);
+    ASSERT_EQ(book.apply(event(Action::Add, Side::Buy, 100, 20, 1, 2)), ApplyResult::Applied);
+
+    EXPECT_EQ(book.quantity_at(Side::Buy, 100), 30);
+    EXPECT_EQ(book.order_count_at(Side::Buy, 100), 2);
+    EXPECT_EQ(book.order_count(), 2);
+    ASSERT_TRUE(book.best_bid().has_value());
+    EXPECT_EQ(book.best_bid()->order_count, 2);
+}
+
+TEST(OrderBookTest, PreservesFifoPriority) {
+    OrderBook book{1};
+    ASSERT_EQ(book.apply(event(Action::Add, Side::Buy, 100, 10, 1, 1)), ApplyResult::Applied);
+    ASSERT_EQ(book.apply(event(Action::Add, Side::Buy, 100, 20, 1, 2)), ApplyResult::Applied);
+    ASSERT_EQ(book.apply(event(Action::Add, Side::Buy, 100, 30, 1, 3)), ApplyResult::Applied);
+
+    ASSERT_TRUE(book.first_order_at(Side::Buy, 100).has_value());
+    EXPECT_EQ(book.first_order_at(Side::Buy, 100)->order_id, 1);
+    ASSERT_EQ(book.apply(event(Action::Update, Side::Buy, 100, 15, 1, 1)), ApplyResult::Applied);
+    EXPECT_EQ(book.first_order_at(Side::Buy, 100)->order_id, 1);
+    ASSERT_EQ(book.apply(event(Action::Delete, Side::Buy, 100, 0, 1, 1)), ApplyResult::Applied);
+    EXPECT_EQ(book.first_order_at(Side::Buy, 100)->order_id, 2);
+}
+
+TEST(OrderBookTest, DeletesMiddleOrderAndMaintainsAggregate) {
+    OrderBook book{1};
+    ASSERT_EQ(book.apply(event(Action::Add, Side::Sell, 100, 10, 1, 1)), ApplyResult::Applied);
+    ASSERT_EQ(book.apply(event(Action::Add, Side::Sell, 100, 20, 1, 2)), ApplyResult::Applied);
+    ASSERT_EQ(book.apply(event(Action::Add, Side::Sell, 100, 30, 1, 3)), ApplyResult::Applied);
+
+    ASSERT_EQ(book.apply(event(Action::Delete, Side::Sell, 100, 0, 1, 2)), ApplyResult::Applied);
+    EXPECT_FALSE(book.order(2).has_value());
+    EXPECT_EQ(book.quantity_at(Side::Sell, 100), 40);
+    EXPECT_EQ(book.order_count_at(Side::Sell, 100), 2);
+    EXPECT_EQ(book.first_order_at(Side::Sell, 100)->order_id, 1);
+
+    ASSERT_EQ(book.apply(event(Action::Delete, Side::Sell, 100, 0, 1, 1)), ApplyResult::Applied);
+    ASSERT_TRUE(book.first_order_at(Side::Sell, 100).has_value());
+    EXPECT_EQ(book.first_order_at(Side::Sell, 100)->order_id, 3);
 }
 
 TEST(InstrumentRegistryTest, LooksUpNamesAndIds) {
