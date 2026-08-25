@@ -55,6 +55,13 @@ Definition of Done
 7. Report benchmark changes.
 8. Report remaining risks.
 
+After modifying C++ code:
+
+1. Build the project using build_project.
+2. If the build succeeds, run tests using run_tests.
+3. Do not consider the task complete if any test fails.
+4. Report failed tests before attempting additional changes.
+
 Performance Changes
 
 Do not optimize based on assumptions.
