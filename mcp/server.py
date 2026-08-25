@@ -20,7 +20,11 @@ class BuildResult(TypedDict):
 
 @mcp.tool()
 def build_project() -> BuildResult:
-    """Build the C++ project using the existing CMake build directory."""
+    """Build the current C++ project.
+    Use this tool after changing C++ source files to verify that the
+    repository still compiles. It uses the existing CMake build directory
+    and does not configure or clean the project.
+    """
 
     if not BUILD_DIR.exists():
         return BuildResult(
