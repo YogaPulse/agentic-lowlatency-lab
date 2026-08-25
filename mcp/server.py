@@ -1,7 +1,52 @@
+import subprocess
+import time
+from pathlib import Path
+from typing import TypedDict
+
 from mcp.server import MCPServer
 
 mcp = MCPServer("agentic-lowlatency-lab")
 
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+BUILD_DIR = PROJECT_ROOT / "build"
+
+class BuildResult(TypedDict):
+    success: bool
+    exit_code: int
+    stdout: str
+    stderr: str
+    duration_ms: int
+
+
+@mcp.tool()
+def build_project() -> BuildResult:
+    """Build the C++ project using the existing CMake build directory."""
+
+    start = time.monotonic()
+
+    result = subprocess.run(
+        [
+            "cmake",
+            "--build",
+            str(BUILD_DIR),
+            "--parallel",
+        ],
+        cwd=PROJECT_ROOT,
+        capture_output=True,
+        text=True,
+        timeout=120,
+        check=False,
+    )
+
+    duration_ms = int((time.monotonic() - start) * 1000)
+
+    return BuildResult(
+        success=result.returncode == 0,
+        exit_code=result.returncode,
+        stdout=result.stdout,
+        stderr=result.stderr,
+        duration_ms=duration_ms,
+    )
 
 @mcp.tool()
 def get_project_info() -> dict[str, str]:
@@ -15,6 +60,7 @@ def get_project_info() -> dict[str, str]:
         "benchmark": "market_data_benchmark",
         "purpose": "Low-latency synthetic market-data processing demo",
     }
+
 
 
 if __name__ == "__main__":
