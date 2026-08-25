@@ -36,19 +36,31 @@ def build_project() -> BuildResult:
 
     start = time.monotonic()
 
-    result = subprocess.run(
-        [
-            "cmake",
-            "--build",
-            str(BUILD_DIR),
-            "--parallel",
-        ],
-        cwd=PROJECT_ROOT,
-        capture_output=True,
-        text=True,
-        timeout=120,
-        check=False,
-    )
+    try:
+        result = subprocess.run(
+            [
+                "cmake",
+                "--build",
+                str(BUILD_DIR),
+                "--parallel",
+            ],
+            cwd=PROJECT_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=False,
+        )
+
+    except subprocess.TimeoutExpired:
+        duration_ms = int((time.monotonic() - start) * 1000)
+
+        return BuildResult(
+            success=False,
+            exit_code=-1,
+            stdout="",
+            stderr="Build timed out after 120 seconds.",
+            duration_ms=duration_ms,
+        )
 
     duration_ms = int((time.monotonic() - start) * 1000)
 
