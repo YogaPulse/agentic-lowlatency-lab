@@ -22,6 +22,18 @@ class BuildResult(TypedDict):
 def build_project() -> BuildResult:
     """Build the C++ project using the existing CMake build directory."""
 
+    if not BUILD_DIR.exists():
+        return BuildResult(
+            success=False,
+            exit_code=-1,
+            stdout="",
+            stderr=(
+                f"Build directory does not exist: {BUILD_DIR}. "
+                "Configure the project first."
+            ),
+            duration_ms=0,
+        )
+
     start = time.monotonic()
 
     result = subprocess.run(
