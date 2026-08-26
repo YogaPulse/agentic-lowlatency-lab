@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
-#include "../src/instrument_registry.h"
-#include "../src/order_book.h"
-#include "../src/synthetic_feed.h"
+#include <order_book.h>
+#include <synthetic_feed.h>
+#include <instrument_registry.h>
 
 namespace
 {

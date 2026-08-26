@@ -1,5 +1,6 @@
 import subprocess
 import time
+import json
 from pathlib import Path
 from typing import Literal, TypedDict
 import xml.etree.ElementTree as ET
@@ -11,6 +12,7 @@ mcp = MCPServer("agentic-lowlatency-lab")
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 BUILD_DIR = PROJECT_ROOT / "build"
 TEST_RESULTS_FILE = BUILD_DIR / "mcp-test-results.xml"
+BENCHMARK_EXECUTABLE = BUILD_DIR / "order_book_benchmark"
 
 class BuildResult(TypedDict):
     success: bool
@@ -266,6 +268,144 @@ def run_tests() -> TestResult:
         stdout=result.stdout,
         stderr=result.stderr,
         duration_ms=duration_ms,
+    )
+
+class BenchmarkResult(TypedDict):
+    success: bool
+    events: int
+    applied_events: int
+    rejected_events: int
+    rejected_percent: float
+    throughput_events_per_sec: float
+    avg_ns: float
+    p50_ns: int
+    p99_ns: int
+    p999_ns: int
+    duration_ms: int
+    stdout: str
+    stderr: str
+
+@mcp.tool()
+def run_benchmark() -> BenchmarkResult:
+    """Run the project's low-latency market-data benchmark.
+
+    Use this tool after a successful build and test run to measure
+    current throughput and latency.
+
+    The benchmark uses a deterministic synthetic event stream.
+    """
+
+    if not BENCHMARK_EXECUTABLE.exists():
+        return BenchmarkResult(
+            success=False,
+            events=0,
+            applied_events=0,
+            rejected_events=0,
+            rejected_percent=0.0,
+            throughput_events_per_sec=0.0,
+            avg_ns=0.0,
+            p50_ns=0,
+            p99_ns=0,
+            p999_ns=0,
+            duration_ms=0,
+            stdout="",
+            stderr=(
+                f"Benchmark executable does not exist: "
+                f"{BENCHMARK_EXECUTABLE}"
+            ),
+        )
+
+    start = time.monotonic()
+
+    try:
+        result = subprocess.run(
+            [
+                str(BENCHMARK_EXECUTABLE),
+                "--json",
+            ],
+            cwd=PROJECT_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=False,
+        )
+
+    except subprocess.TimeoutExpired:
+        duration_ms = int(
+            (time.monotonic() - start) * 1000
+        )
+
+        return BenchmarkResult(
+            success=False,
+            events=0,
+            applied_events=0,
+            rejected_events=0,
+            rejected_percent=0.0,
+            throughput_events_per_sec=0.0,
+            avg_ns=0.0,
+            p50_ns=0,
+            p99_ns=0,
+            p999_ns=0,
+            duration_ms=duration_ms,
+            stdout="",
+            stderr="Benchmark timed out after 120 seconds.",
+        )
+
+    duration_ms = int(
+        (time.monotonic() - start) * 1000
+    )
+
+    if result.returncode != 0:
+        return BenchmarkResult(
+            success=False,
+            events=0,
+            applied_events=0,
+            rejected_events=0,
+            rejected_percent=0.0,
+            throughput_events_per_sec=0.0,
+            avg_ns=0.0,
+            p50_ns=0,
+            p99_ns=0,
+            p999_ns=0,
+            duration_ms=duration_ms,
+            stdout=result.stdout,
+            stderr=result.stderr,
+        )
+
+    try:
+        data = json.loads(result.stdout)
+
+    except json.JSONDecodeError as error:
+        return BenchmarkResult(
+            success=False,
+            events=0,
+            applied_events=0,
+            rejected_events=0,
+            rejected_percent=0.0,
+            throughput_events_per_sec=0.0,
+            avg_ns=0.0,
+            p50_ns=0,
+            p99_ns=0,
+            p999_ns=0,
+            duration_ms=duration_ms,
+            stdout=result.stdout,
+            stderr=f"Failed to parse benchmark JSON: {error}",
+        )
+
+    return BenchmarkResult(
+        success=True,
+        events=int(data["events"]),
+        applied_events=int(data["applied_events"]),
+        rejected_events=int(data["rejected_events"]),
+        rejected_percent=float(data["rejected_percent"]),
+        throughput_events_per_sec=float(data["throughput_events_per_sec"]),
+        avg_ns=float(data["avg_ns"]),
+        p50_ns=int(data["p50_ns"]),
+        p99_ns=int(data["p99_ns"]),
+        p999_ns=int(data["p999_ns"]),
+        duration_ms=duration_ms,
+        stdout=result.stdout,
+        stderr=result.stderr,
     )
 
 if __name__ == "__main__":

@@ -28,6 +28,11 @@ add_library(market_data ${LIBRARY_SOURCE_FILES})
 add_executable(unit_tests tests/test.cpp)
 
 target_link_libraries(unit_tests market_data GTest::gtest_main)
+target_include_directories(
+        unit_tests
+        PRIVATE
+        ${PROJECT_SOURCE_DIR}/src
+)
 
 include(GoogleTest)
 gtest_discover_tests(unit_tests)
@@ -38,3 +43,8 @@ target_link_libraries(agentic-lowlatency-lab market_data)
 
 add_executable(order_book_benchmark benchmarks/order_book_benchmark.cpp)
 target_link_libraries(order_book_benchmark market_data)
+target_include_directories(
+        order_book_benchmark
+        PRIVATE
+        ${PROJECT_SOURCE_DIR}/src
+)
