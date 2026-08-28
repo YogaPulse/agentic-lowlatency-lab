@@ -1,107 +1,80 @@
 ---
 name: cpp-low-latency-review
-description: Review performance-sensitive C++ changes for allocations, copies,
-  lifetime issues, synchronization, cache behavior and benchmark regressions.
+description: Review performance-sensitive C++ changes for allocations, copies, lifetime issues, synchronization, cache behavior, algorithmic complexity, and benchmark regressions.
 ---
 
 # C++ Low-Latency Review
 
-Use this skill to review changes that affect performance-sensitive C++ code.
+Review the current C++ changes.
 
 Do not modify files unless explicitly requested.
 
-## Step 1: Inspect the change
+Focus primarily on the current change.
 
-Inspect the current git diff and identify:
+## 1. Inspect the change
 
-- modified C++ files;
-- affected components;
-- whether the change touches the hot path;
-- whether external behavior changed.
+Inspect the current git diff and relevant surrounding code.
 
-Do not assume a performance impact before inspecting the code.
+Determine:
 
-## Step 2: Correctness review
+- which files changed;
+- which components are affected;
+- whether the change affects the measured hot path;
+- whether behavior or data structures changed.
 
-Check for:
+## 2. Review correctness
 
-- undefined behavior;
-- lifetime problems;
-- dangling references;
-- iterator or reference invalidation;
-- ownership mistakes;
-- incorrect state transitions;
-- accidental behavior changes.
+Check correctness, ownership, object lifetime, iterator/reference
+invalidation, and unintended behavior changes.
 
-## Step 3: Memory review
+## 3. Review low-latency risks
 
-Check for:
+Read:
 
-- heap allocations on the hot path;
-- container reallocations;
-- unnecessary copies;
-- temporary objects;
-- string construction;
-- shared_ptr reference counting;
-- oversized data structures.
+references/performance-checklist.md
 
-## Step 4: CPU and cache review
+Use the checklist to inspect only issues relevant to the current change.
 
-Check for:
+Do not report theoretical problems in unchanged code unless they are
+necessary to explain a measured regression.
 
-- accidental O(N) operations;
-- repeated lookups;
-- pointer chasing;
-- cache-unfriendly layouts;
-- unnecessary branches;
-- virtual dispatch;
-- redundant parsing or conversions.
-
-## Step 5: Concurrency review
-
-Check for:
-
-- new mutexes;
-- unnecessary atomics;
-- stronger memory ordering than required;
-- contention;
-- false-sharing risks.
-
-## Step 6: Validate
+## 4. Validate
 
 Use project-specific MCP tools when available.
 
-1. Build using build_project().
-2. If the build succeeds, run tests using run_tests().
-3. If tests pass and the change is performance-sensitive, run compare_benchmarks().
+Run:
+
+1. build_project()
+2. run_tests()
+3. compare_benchmarks() for performance-sensitive changes
 
 Do not modify or replace the saved benchmark baseline.
 
-## Step 7: Report
+## 5. Report
 
-Return findings grouped by:
+Group findings by severity:
 
 CRITICAL
 HIGH
 MEDIUM
 LOW
 
-For each finding include:
+For every finding include:
 
 - file and location;
+- evidence;
 - problem;
-- why it matters;
-- suggested fix.
+- expected impact;
+- suggested minimal fix.
 
 Then report:
 
 - build status;
 - test status;
-- performance comparison status;
+- benchmark comparison status;
 - throughput delta;
-- p99 delta;
-- remaining uncertainty.
+- p99 delta.
 
 Clearly distinguish measured facts from hypotheses.
 
-Do not claim that a code change caused a measured regression unless the evidence supports that conclusion.
+Do not modify files during a review-only task.
