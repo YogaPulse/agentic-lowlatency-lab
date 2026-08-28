@@ -29,9 +29,19 @@ invalidation, and unintended behavior changes.
 
 ## 3. Review low-latency risks
 
-Read:
+Before performing the low-latency review, read:
 
 references/performance-checklist.md
+
+This reference is required for this workflow.
+
+In the final report include:
+
+References used:
+- references/performance-checklist.md
+
+Do not claim that the low-latency review is complete unless the reference
+was read.
 
 Use the checklist to inspect only issues relevant to the current change.
 
