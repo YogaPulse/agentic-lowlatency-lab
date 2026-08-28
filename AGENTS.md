@@ -39,6 +39,7 @@ When project-specific MCP tools are available:
 * `tests/` — unit tests.
 * `benchmarks/` — performance benchmark source and saved baseline data.
 * `mcp/` — project-specific MCP tools for build, test, benchmark, and baseline comparison automation.
+* `skills/` — reusable agent workflows for project-specific engineering tasks.
 
 # General Engineering Rules
 
@@ -238,3 +239,9 @@ For performance-sensitive changes:
 10. If no baseline exists, report that performance validation against a baseline could not be completed.
 
 A performance improvement may only be claimed when before/after measurements were produced under equivalent benchmark conditions.
+
+# Skills
+
+Use repository Skills for repeatable engineering workflows when applicable.
+
+For performance-sensitive C++ review, prefer the `cpp-low-latency-review` skill.
