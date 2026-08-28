@@ -39,7 +39,7 @@ When project-specific MCP tools are available:
 * `tests/` — unit tests.
 * `benchmarks/` — performance benchmark source and saved baseline data.
 * `mcp/` — project-specific MCP tools for build, test, benchmark, and baseline comparison automation.
-* `skills/` — reusable agent workflows for project-specific engineering tasks.
+* `.agents/skills/` — repository-local reusable agent workflows for project-specific engineering tasks.
 
 # General Engineering Rules
 
