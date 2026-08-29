@@ -241,6 +241,7 @@ A performance improvement may only be claimed when before/after measurements wer
 
 # Skills
 
-Use repository Skills for repeatable engineering workflows when applicable.
+For review of performance-sensitive C++ changes, use the
+cpp-low-latency-review repository skill when available.
 
-For performance-sensitive C++ review, prefer the `cpp-low-latency-review` skill.
+Review-only tasks must not modify files unless explicitly approved.

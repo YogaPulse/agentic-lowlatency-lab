@@ -1,6 +1,6 @@
 ---
 name: cpp-low-latency-review
-description: Review performance-sensitive C++ changes for allocations, copies, lifetime issues, synchronization, cache behavior, algorithmic complexity, and benchmark regressions.
+description: Review performance-sensitive C++ changes for correctness, allocations, copies, lifetime issues, synchronization, cache behavior, algorithmic complexity, and benchmark regressions.
 ---
 
 # C++ Low-Latency Review
@@ -24,12 +24,19 @@ Determine:
 
 ## 2. Review correctness
 
-Check correctness, ownership, object lifetime, iterator/reference
-invalidation, and unintended behavior changes.
+Check for:
+
+- undefined behavior;
+- ownership mistakes;
+- lifetime problems;
+- dangling references;
+- iterator/reference invalidation;
+- incorrect state transitions;
+- unintended behavior changes.
 
 ## 3. Review low-latency risks
 
-Before performing the low-latency review, read:
+Before completing the review, read:
 
 references/performance-checklist.md
 
@@ -40,36 +47,108 @@ In the final report include:
 References used:
 - references/performance-checklist.md
 
-Do not claim that the low-latency review is complete unless the reference
-was read.
+Use that checklist only for issues relevant to the current change.
 
-Use the checklist to inspect only issues relevant to the current change.
+Do not report theoretical or speculative issues merely because a construct
+can be expensive.
 
-Do not report theoretical problems in unchanged code unless they are
-necessary to explain a measured regression.
-
-## 4. Validate
+## 4. Validation workflow
 
 Use project-specific MCP tools when available.
 
+### Build
+
 Run:
 
-1. build_project()
-2. run_tests()
-3. compare_benchmarks() for performance-sensitive changes
+build_project()
 
-Do not modify or replace the saved benchmark baseline.
+If the build fails:
 
-## 5. Report
+- stop validation;
+- do not run tests or benchmarks;
+- report BUILD FAILED;
+- include relevant compiler diagnostics.
 
-Group findings by severity:
+### Tests
+
+If the build succeeds, run:
+
+run_tests()
+
+If tests fail:
+
+- stop performance validation;
+- do not run compare_benchmarks();
+- report TESTS FAILED;
+- list failing tests;
+- explain likely causes when evidence is available.
+
+### Performance
+
+If:
+
+- build succeeds;
+- tests pass;
+- the current change is performance-sensitive;
+
+run:
+
+compare_benchmarks()
+
+Do not substitute a single run_benchmark() measurement when a valid
+baseline comparison is available.
+
+Do not create, replace, or update the saved baseline.
+
+If no baseline exists:
+
+- report PERFORMANCE NOT VALIDATED;
+- explain that baseline comparison was unavailable.
+
+If benchmark conditions do not match:
+
+- report INVALID COMPARISON;
+- do not draw performance conclusions.
+
+## 5. Performance status
+
+Treat compare_benchmarks() as the authoritative source for:
+
+- OK;
+- WARNING;
+- REGRESSION.
+
+Do not independently reinterpret thresholds unless repository policy
+explicitly requires it.
+
+A WARNING must be visible in the final report.
+
+An unexpected REGRESSION means the reviewed performance-sensitive change
+is not ready for completion.
+
+p99.9 is informational unless repository policy states otherwise.
+
+## 6. Report
+
+Return:
+
+### Summary
+
+- Build: PASS / FAIL
+- Tests: PASS / FAIL / NOT RUN
+- Performance: OK / WARNING / REGRESSION / NOT RUN / INVALID
+- Review result: PASS / NEEDS CHANGES
+
+### Findings
+
+Group findings by:
 
 CRITICAL
 HIGH
 MEDIUM
 LOW
 
-For every finding include:
+For each finding include:
 
 - file and location;
 - evidence;
@@ -77,14 +156,26 @@ For every finding include:
 - expected impact;
 - suggested minimal fix.
 
-Then report:
+### Validation
 
-- build status;
-- test status;
-- benchmark comparison status;
-- throughput delta;
-- p99 delta.
+Report:
 
-Clearly distinguish measured facts from hypotheses.
+- build result;
+- test result;
+- baseline comparison status;
+- throughput before/after and delta;
+- p99 before/after and delta;
+- rejected-event information when available.
+
+### Evidence discipline
+
+Clearly distinguish:
+
+- measured facts;
+- code evidence;
+- hypotheses.
+
+Do not state a suspected cause as proven unless an appropriate before/after
+experiment confirms it.
 
 Do not modify files during a review-only task.
