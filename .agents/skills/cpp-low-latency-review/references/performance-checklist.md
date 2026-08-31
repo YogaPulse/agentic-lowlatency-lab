@@ -50,6 +50,29 @@ const auto& value = ...
 
 but report them only when a meaningful copy actually occurs.
 
+When reviewing pass-by-value changes on a hot path, distinguish C++
+value semantics from the actual machine-level cost.
+
+A by-value parameter may introduce additional copying or data movement,
+but the actual cost depends on object size, triviality, ABI, compiler
+optimization, inlining, and how the callee uses the value.
+
+Do not report pass-by-value as a performance finding merely because C++
+value semantics are present.
+
+Report it as a performance finding only when there is additional
+evidence, such as:
+
+- the copied object is large or non-trivial;
+- copying performs allocation, reference counting, or other observable work;
+- generated code or profiling shows additional work;
+- benchmark evidence shows a repeatable meaningful regression.
+
+Otherwise, it may be mentioned as an observation without assigning
+severity.
+
+Do not claim a specific runtime cost without measurement.
+
 # Ownership and Lifetime
 
 Check for:
