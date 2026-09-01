@@ -248,13 +248,21 @@ Review-only tasks must not modify files unless explicitly approved.
 
 ## Specialized Review Delegation
 
-For performance-sensitive C++ review tasks, delegate the performance
-review to the `performance_reviewer` subagent when available.
+For C++ change reviews, use specialized reviewers when available:
 
-The performance reviewer should use the repository-local
-`cpp-low-latency-review` Skill and project MCP validation tools.
+- `cpp_reviewer` for correctness, lifetime, ownership, API contracts,
+  undefined behavior, and state invariants.
+  For source-code reviews, validate with project MCP tools
+  `build_project()` and `run_tests()` unless the task is explicitly
+  static-analysis-only.
 
-Wait for the subagent result before producing the final review.
+- `performance_reviewer` for hot-path and performance-sensitive concerns.
+  The `performance_reviewer` should use the repository-local
+  `cpp-low-latency-review` Skill, including its MCP validation workflow.
 
-Do not duplicate the full performance review in the primary agent unless
-the subagent is unavailable or its result requires clarification.
+Keep reviewer scopes separate.
+
+Wait for the delegated subagent result before producing the final review.
+
+Do not duplicate a specialized review in the primary agent unless the
+subagent is unavailable, its result is incomplete, or clarification is required.
