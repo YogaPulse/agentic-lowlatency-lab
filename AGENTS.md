@@ -245,3 +245,16 @@ For review of performance-sensitive C++ changes, use the
 cpp-low-latency-review repository skill when available.
 
 Review-only tasks must not modify files unless explicitly approved.
+
+## Specialized Review Delegation
+
+For performance-sensitive C++ review tasks, delegate the performance
+review to the `performance_reviewer` subagent when available.
+
+The performance reviewer should use the repository-local
+`cpp-low-latency-review` Skill and project MCP validation tools.
+
+Wait for the subagent result before producing the final review.
+
+Do not duplicate the full performance review in the primary agent unless
+the subagent is unavailable or its result requires clarification.
