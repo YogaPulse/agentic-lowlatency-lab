@@ -9,7 +9,8 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
 ```
 
-When project-specific MCP tools are available, prefer `build_project()` over running build commands manually.
+When project-specific MCP tools are available, prefer `build_project()` over
+running build commands manually.
 
 ## Tests
 
@@ -30,16 +31,22 @@ Performance benchmarks must use a Release build.
 
 When project-specific MCP tools are available:
 
-* use `run_benchmark()` to obtain a single current measurement;
-* use `compare_benchmarks()` when evaluating a performance-sensitive change against the saved baseline.
+- use `run_benchmark()` to obtain a single current measurement;
+- use `compare_benchmarks()` when evaluating a performance-sensitive change
+  against the saved baseline.
 
 ## Repository Structure
 
-* `src/` — market-data types, synthetic feed, instrument registry, and order-book implementation.
-* `tests/` — unit tests.
-* `benchmarks/` — performance benchmark source and saved baseline data.
-* `mcp/` — project-specific MCP tools for build, test, benchmark, and baseline comparison automation.
-* `.agents/skills/` — repository-local reusable agent workflows and their supporting references.
+- `src/` — market-data types, synthetic feed, instrument registry, and
+  order-book implementation.
+- `tests/` — unit tests.
+- `benchmarks/` — performance benchmark source and saved baseline data.
+- `mcp/` — project-specific MCP tools for build, test, benchmark, and baseline
+  comparison automation.
+- `.agents/skills/` — repository-local reusable agent workflows and their
+  supporting references.
+- `.codex/agents/` — repository-local specialized subagent definitions.
+
 # General Engineering Rules
 
 1. Use C++23.
@@ -49,7 +56,8 @@ When project-specific MCP tools are available:
 5. Avoid unnecessary dependencies.
 6. Preserve existing behavior unless the task explicitly requires changing it.
 7. Prefer explicit ownership and clear lifetime semantics.
-8. Use non-owning views such as `std::string_view` only when the referenced lifetime is clearly valid.
+8. Use non-owning views such as `std::string_view` only when the referenced
+   lifetime is clearly valid.
 
 # Low-Latency C++ Rules
 
@@ -61,9 +69,9 @@ For performance-sensitive code:
 4. Avoid virtual dispatch on the hot path unless justified.
 5. Do not introduce mutexes without justification.
 6. Avoid unnecessary atomics and synchronization.
-7. Prefer contiguous and cache-friendly memory layouts.
+7. Prefer contiguous and cache-friendly memory layouts when appropriate.
 8. Consider cache locality and pointer chasing.
-9. Consider branch predictability.
+9. Consider branch predictability without making unsupported claims about it.
 10. Avoid accidental increases in algorithmic complexity on the hot path.
 
 # Before Modifying Code
@@ -96,30 +104,33 @@ Do not change benchmark methodology merely to produce better numbers.
 
 Unless the task explicitly concerns the benchmark itself, do not change:
 
-* benchmark workload;
-* event count;
-* synthetic-feed seed;
-* latency sampling frequency;
-* measured operation;
-* benchmark output semantics.
+- benchmark workload;
+- event count;
+- synthetic-feed seed;
+- latency sampling frequency;
+- measured operation;
+- benchmark output semantics.
 
-A performance improvement must come from changes to the implementation being measured, not from making the benchmark easier.
+A performance improvement must come from changes to the implementation being
+measured, not from making the benchmark easier.
 
 # Benchmark Conditions
 
-Baseline and current measurements are comparable only when benchmark conditions are equivalent.
+Baseline and current measurements are comparable only when benchmark
+conditions are equivalent.
 
 At minimum, verify that the following conditions match:
 
-* benchmark executable;
-* Release build configuration;
-* event count;
-* synthetic-feed seed;
-* latency sampling frequency;
-* measured operation;
-* benchmark output semantics.
+- benchmark executable;
+- Release build configuration;
+- event count;
+- synthetic-feed seed;
+- latency sampling frequency;
+- measured operation;
+- benchmark output semantics.
 
-If benchmark conditions differ, do not report a performance improvement or regression.
+If benchmark conditions differ, do not report a performance improvement or
+regression.
 
 Report the comparison as invalid and explain which conditions differ.
 
@@ -127,29 +138,34 @@ Report the comparison as invalid and explain which conditions differ.
 
 The benchmark reports:
 
-* processed events;
-* applied events;
-* rejected events;
-* rejected percentage;
-* throughput in events per second;
-* average nanoseconds per event;
-* p50 latency;
-* p99 latency;
-* p99.9 latency.
+- processed events;
+- applied events;
+- rejected events;
+- rejected percentage;
+- throughput in events per second;
+- average nanoseconds per event;
+- p50 latency;
+- p99 latency;
+- p99.9 latency.
 
 Always report unexpected rejected events.
 
-Local benchmark results can contain measurement noise. Do not treat very small differences between individual benchmark runs as definitive performance changes.
+Local benchmark results can contain measurement noise. Do not treat very small
+differences between individual benchmark runs as definitive performance
+changes.
 
 Benchmark comparisons must use multiple runs and median values.
 
 For regression decisions:
 
-* throughput is the primary throughput metric;
-* average nanoseconds per event is reported but is not treated as an independent regression signal because it represents substantially the same information as throughput;
-* p99 may participate in regression detection;
-* p50 is primarily informational;
-* p99.9 is informational and may be substantially noisier than the other metrics.
+- throughput is the primary throughput metric;
+- average nanoseconds per event is reported but is not treated as an
+  independent regression signal because it represents substantially the same
+  information as throughput;
+- p99 may participate in regression detection;
+- p50 is primarily informational;
+- p99.9 is informational and may be substantially noisier than the other
+  metrics.
 
 Do not claim that a change improves performance without benchmark evidence.
 
@@ -160,14 +176,19 @@ The saved benchmark baseline represents a known-good reference implementation.
 Rules:
 
 1. Do not create, replace, or update the benchmark baseline automatically.
-2. `save_benchmark_baseline()` may only be used when explicitly requested by a human.
-3. Never update the baseline merely because the current implementation shows a regression.
-4. Do not modify `benchmarks/baseline.json` manually unless explicitly requested.
+2. `save_benchmark_baseline()` may only be used when explicitly requested by a
+   human.
+3. Never update the baseline merely because the current implementation shows a
+   regression.
+4. Do not modify `benchmarks/baseline.json` manually unless explicitly
+   requested.
 5. Prefer creating a baseline from a known-good revision with passing tests.
 6. The baseline should record the Git commit when available.
 7. Baseline measurements must use multiple benchmark runs and median values.
-8. Current comparison measurements must use the same number and type of benchmark runs where practical.
-9. If no baseline exists, report that performance comparison cannot be performed.
+8. Current comparison measurements must use the same number and type of
+   benchmark runs where practical.
+9. If no baseline exists, report that performance comparison cannot be
+   performed.
 10. Do not automatically create a baseline to make a comparison possible.
 
 # Regression Policy
@@ -176,23 +197,25 @@ Use the following initial thresholds for local benchmark comparisons.
 
 ## Throughput
 
-* decrease of less than 5%: normally treated as measurement noise / `OK`;
-* decrease from 5% up to 10%: `WARNING`;
-* decrease greater than 10%: `REGRESSION`.
+- decrease of less than 5%: normally treated as measurement noise / `OK`;
+- decrease from 5% up to 10%: `WARNING`;
+- decrease greater than 10%: `REGRESSION`.
 
 ## p99 Latency
 
-* increase of less than 10%: normally `OK`;
-* increase from 10% up to 20%: `WARNING`;
-* increase greater than 20%: `REGRESSION`.
+- increase of less than 10%: normally `OK`;
+- increase from 10% up to 20%: `WARNING`;
+- increase greater than 20%: `REGRESSION`.
 
 ## p99.9 Latency
 
 p99.9 is informational only.
 
-A p99.9 change must not independently change the overall performance status to `WARNING` or `REGRESSION`.
+A p99.9 change must not independently change the overall performance status to
+`WARNING` or `REGRESSION`.
 
-Always report all available benchmark deltas even when the overall status is `OK`.
+Always report all available benchmark deltas even when the overall status is
+`OK`.
 
 # Definition of Done
 
@@ -202,67 +225,133 @@ After modifying C++ code:
 2. If the build fails, report the failure and relevant compiler diagnostics.
 3. If the build succeeds, run tests using `run_tests()` when available.
 4. Do not consider the task complete while relevant tests are failing.
-5. Report failed tests and analyze their cause before considering the task complete.
-6. Review the resulting code changes for correctness and unintended modifications.
+5. Report failed tests and analyze their cause before considering the task
+   complete.
+6. Review the resulting code changes for correctness and unintended
+   modifications.
 7. Report:
-
-    * modified files;
-    * important implementation decisions;
-    * build status;
-    * tests executed and their status;
-    * remaining correctness risks.
+   - modified files;
+   - important implementation decisions;
+   - build status;
+   - tests executed and their status;
+   - remaining correctness risks.
 
 For performance-sensitive changes:
 
 1. Build must succeed.
 2. Relevant tests must pass.
 3. Run `compare_benchmarks()` against the saved baseline.
-4. Do not substitute a single `run_benchmark()` result for baseline comparison when a valid baseline exists.
+4. Do not substitute a single `run_benchmark()` result for baseline comparison
+   when a valid baseline exists.
 5. Report:
-
-    * overall performance status;
-    * baseline throughput;
-    * current throughput;
-    * throughput percentage change;
-    * baseline average latency;
-    * current average latency;
-    * p50 before and after;
-    * p99 before and after;
-    * p99.9 before and after;
-    * applied events;
-    * rejected events and rejected percentage.
-6. If the comparison reports `WARNING`, explicitly mention it in the final result.
-7. If the comparison reports an unexpected `REGRESSION`, do not consider the performance-sensitive task complete.
+   - overall performance status;
+   - baseline throughput;
+   - current throughput;
+   - throughput percentage change;
+   - baseline average latency;
+   - current average latency;
+   - p50 before and after;
+   - p99 before and after;
+   - p99.9 before and after;
+   - applied events;
+   - rejected events and rejected percentage.
+6. If the comparison reports `WARNING`, explicitly mention it in the final
+   result.
+7. If the comparison reports an unexpected `REGRESSION`, do not consider the
+   performance-sensitive task complete.
 8. Do not resolve a regression by replacing or modifying the saved baseline.
-9. If benchmark conditions do not match, report the comparison as invalid rather than drawing performance conclusions.
-10. If no baseline exists, report that performance validation against a baseline could not be completed.
+9. If benchmark conditions do not match, report the comparison as invalid
+   rather than drawing performance conclusions.
+10. If no baseline exists, report that performance validation against a
+    baseline could not be completed.
 
-A performance improvement may only be claimed when before/after measurements were produced under equivalent benchmark conditions.
+A performance improvement may only be claimed when before/after measurements
+were produced under equivalent benchmark conditions.
 
 # Skills
 
-For review of performance-sensitive C++ changes, use the
-cpp-low-latency-review repository skill when available.
+For direct review of performance-sensitive C++ changes, use the
+`cpp-low-latency-review` repository Skill when available.
+
+When the review is delegated to `performance_reviewer`, the subagent should use
+the `cpp-low-latency-review` Skill in delegated review mode.
 
 Review-only tasks must not modify files unless explicitly approved.
 
-## Specialized Review Delegation
+# Specialized Review Delegation
 
-For C++ change reviews, use specialized reviewers when available:
+For every C++ change review, delegate independent review tasks to both
+specialized reviewers when available:
 
 - `cpp_reviewer` for correctness, lifetime, ownership, API contracts,
-  undefined behavior, and state invariants.
-  For source-code reviews, validate with project MCP tools
-  `build_project()` and `run_tests()` unless the task is explicitly
-  static-analysis-only.
+  undefined behavior, container semantics, and state invariants;
 
 - `performance_reviewer` for hot-path and performance-sensitive concerns.
   The `performance_reviewer` should use the repository-local
-  `cpp-low-latency-review` Skill, including its MCP validation workflow.
+  `cpp-low-latency-review` Skill in delegated review mode for static
+  performance analysis and evidence discipline.
 
 Keep reviewer scopes separate.
 
-Wait for the delegated subagent result before producing the final review.
+A C++ change review is incomplete until both reviewers have returned results,
+unless a reviewer is unavailable.
 
-Do not duplicate a specialized review in the primary agent unless the
-subagent is unavailable, its result is incomplete, or clarification is required.
+Specialized reviewers perform independent static analysis.
+
+They should not independently repeat shared build, test, or benchmark
+validation unless the primary agent explicitly delegates investigation of an
+incomplete, conflicting, or unexpected validation result.
+
+# Shared Review Validation
+
+The primary agent owns shared deterministic validation for C++ change reviews.
+
+Run shared validation once:
+
+1. Run `build_project()`.
+2. If the build fails:
+   - stop shared validation;
+   - do not run tests or benchmarks;
+   - report the relevant compiler diagnostics.
+3. If the build succeeds, run `run_tests()`.
+4. If tests fail:
+   - stop performance validation;
+   - do not run `compare_benchmarks()`;
+   - report representative failing tests.
+5. If build succeeds, tests pass, and the change is performance-sensitive,
+   run `compare_benchmarks()`.
+
+Do not run benchmark comparison after build or test failure.
+
+Do not create, replace, or update the benchmark baseline during review.
+
+The primary agent may run shared validation while specialized static reviews
+are in progress when doing so is safe.
+
+Wait for both specialized reviewer results and shared validation before
+producing the final review.
+
+# Review Consolidation
+
+The primary agent acts as the coordinator for specialized reviews.
+
+It should:
+
+1. Collect results from `cpp_reviewer`.
+2. Collect results from `performance_reviewer`.
+3. Combine them with shared build, test, and benchmark evidence.
+4. Deduplicate findings that describe the same underlying defect.
+5. Preserve materially different correctness and performance implications of
+   the same code change.
+6. Resolve severity conservatively using the strongest supported impact.
+7. Distinguish measured facts, code evidence, and hypotheses.
+8. Produce one concise final review.
+
+The primary agent should not repeat the full specialized reviews itself unless:
+
+- a specialized reviewer is unavailable;
+- a reviewer result is incomplete;
+- reviewer results conflict materially;
+- additional investigation is required to resolve uncertainty.
+
+Prefer no finding over a speculative finding.
