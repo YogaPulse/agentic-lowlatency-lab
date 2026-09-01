@@ -50,6 +50,15 @@ Do not report purely stylistic, formatting, or naming preferences.
 
 Do not report speculative issues without concrete code evidence.
 
+When reviewing stateful data structures, identify the invariants
+connecting their internal indexes and containers.
+
+For OrderBook-related changes, pay particular attention to consistency
+between orders, price levels, aggregate quantities, and FIFO ordering.
+
+Do not assume that passing tests prove correctness if the changed path
+is insufficiently covered.
+
 Distinguish:
 - code evidence;
 - measured test/build evidence;
