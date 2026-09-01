@@ -280,21 +280,22 @@ Review-only tasks must not modify files unless explicitly approved.
 
 # Specialized Review Delegation
 
-For every C++ change review, delegate independent review tasks to both
-specialized reviewers when available:
+For every C++ change review, delegate independent review tasks to all
+available specialized reviewers when available:
 
 - `cpp_reviewer` for correctness, lifetime, ownership, API contracts,
   undefined behavior, container semantics, and state invariants;
-
 - `performance_reviewer` for hot-path and performance-sensitive concerns.
   The `performance_reviewer` should use the repository-local
   `cpp-low-latency-review` Skill in delegated review mode for static
-  performance analysis and evidence discipline.
+  performance analysis and evidence discipline;
+- `test_reviewer` for changed-behavior coverage, regression protection,
+  assertions, edge cases, and test quality.
 
 Keep reviewer scopes separate.
 
-A C++ change review is incomplete until both reviewers have returned results,
-unless a reviewer is unavailable.
+A C++ change review is incomplete until all three specialized reviewers
+have returned results, unless a reviewer is unavailable.
 
 Specialized reviewers perform independent static analysis.
 
