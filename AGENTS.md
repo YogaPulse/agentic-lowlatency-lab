@@ -290,9 +290,11 @@ available specialized reviewers when available:
   `cpp-low-latency-review` Skill in delegated review mode for static
   performance analysis and evidence discipline;
 - `test_reviewer` for changed-behavior coverage, regression protection,
-  assertions, edge cases, and test quality.
+  assertions, edge cases, state transitions, and test quality.
 
 Keep reviewer scopes separate.
+
+Run independent specialized reviews in parallel when possible.
 
 A C++ change review is incomplete until all three specialized reviewers
 have returned results, unless a reviewer is unavailable.
@@ -329,7 +331,7 @@ Do not create, replace, or update the benchmark baseline during review.
 The primary agent may run shared validation while specialized static reviews
 are in progress when doing so is safe.
 
-Wait for both specialized reviewer results and shared validation before
+Wait for all specialized reviewer results and shared validation before
 producing the final review.
 
 # Review Consolidation
@@ -340,13 +342,13 @@ It should:
 
 1. Collect results from `cpp_reviewer`.
 2. Collect results from `performance_reviewer`.
-3. Combine them with shared build, test, and benchmark evidence.
-4. Deduplicate findings that describe the same underlying defect.
-5. Preserve materially different correctness and performance implications of
-   the same code change.
-6. Resolve severity conservatively using the strongest supported impact.
-7. Distinguish measured facts, code evidence, and hypotheses.
-8. Produce one concise final review.
+3. Collect results from `test_reviewer`
+4. Combine them with shared build, test, and benchmark evidence.
+5. Deduplicate findings that describe the same underlying defect.
+6. Preserve materially different correctness, performance, and testing implications of the same code change.
+7. Resolve severity conservatively using the strongest supported impact.
+8. Distinguish measured facts, code evidence, and hypotheses.
+9. Produce one concise final review.
 
 The primary agent should not repeat the full specialized reviews itself unless:
 
@@ -355,4 +357,32 @@ The primary agent should not repeat the full specialized reviews itself unless:
 - reviewer results conflict materially;
 - additional investigation is required to resolve uncertainty.
 
+When multiple reviewers identify the same underlying defect, produce one
+finding and preserve distinct correctness, performance, and testing impacts.
+
+When reviewers disagree, the primary agent should perform focused
+investigation sufficient to resolve the conflict.
+
+Use the highest severity supported by concrete evidence.
+
+Do not escalate severity merely because multiple reviewers report the same
+issue.
+
 Prefer no finding over a speculative finding.
+
+# Final Review Decision
+
+The primary agent determines the final review result from consolidated
+evidence, not by majority vote.
+
+Return `NEEDS CHANGES` when any supported blocking issue remains, including:
+
+- CRITICAL or HIGH correctness defects;
+- behavior-breaking MEDIUM findings that require correction;
+- unexpected benchmark `REGRESSION`;
+- material missing regression coverage for changed behavior.
+
+Return `PASS` only when no blocking consolidated finding remains.
+
+Warnings and non-blocking observations must remain visible even when the
+overall result is `PASS`.
