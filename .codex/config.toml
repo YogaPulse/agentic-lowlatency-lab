@@ -1,6 +1,6 @@
 [agents]
     enabled = true
-    max_concurrent_threads_per_session = 2
+    max_concurrent_threads_per_session = 3
 
 [mcp_servers.clion]
     url = "http://127.0.0.1:64362/stream"
