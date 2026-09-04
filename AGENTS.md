@@ -386,3 +386,23 @@ Return `PASS` only when no blocking consolidated finding remains.
 
 Warnings and non-blocking observations must remain visible even when the
 overall result is `PASS`.
+
+# End-to-End Change Workflow
+
+For non-trivial implementation requests:
+
+1. Delegate repository analysis and planning to `planner`.
+2. The planner must not modify files.
+3. Present the proposed plan, affected scope, tests, risks, and validation
+   strategy to the human.
+4. Do not begin implementation until the human explicitly approves the plan.
+5. After approval, delegate implementation to `implementation_agent`.
+6. The implementation agent must stay within the approved scope.
+7. If implementation requires a material scope change, stop and request
+   approval before continuing.
+8. After implementation, run the standard specialized C++ review workflow and
+   shared deterministic validation.
+9. Do not automatically apply review fixes or start another editing pass
+   without human approval.
+10. Do not update benchmark baselines as part of this workflow unless explicitly
+    requested by the human.
