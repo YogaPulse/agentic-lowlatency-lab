@@ -100,6 +100,7 @@ ApplyResult OrderBook::add(const MarketDataEvent& event)
     _orders.emplace(event.order_id, OrderNode{
         .price_ticks = event.price_ticks,
         .quantity = event.quantity,
+        .level_index = static_cast<std::size_t>(level - levels.begin()),
         .side = event.side,
         .previous = previous_order_id
     });
@@ -137,9 +138,14 @@ ApplyResult OrderBook::update(const MarketDataEvent& event)
     }
 
     auto& levels = event.side == Side::Buy ? _bids : _asks;
-    auto level = event.side == Side::Buy
-        ? existing_level(levels, event.price_ticks, std::greater<>{})
-        : existing_level(levels, event.price_ticks, std::less<>{});
+    const auto hinted_level_index = order->second.level_index;
+    const auto hint_is_valid = hinted_level_index < levels.size()
+        && levels[hinted_level_index].price_ticks == event.price_ticks;
+    auto level = hint_is_valid
+        ? levels.begin() + static_cast<Levels::difference_type>(hinted_level_index)
+        : event.side == Side::Buy
+            ? existing_level(levels, event.price_ticks, std::greater<>{})
+            : existing_level(levels, event.price_ticks, std::less<>{});
 
     const auto old_quantity = order->second.quantity;
     if (event.quantity > old_quantity
@@ -149,6 +155,11 @@ ApplyResult OrderBook::update(const MarketDataEvent& event)
         return ApplyResult::QuantityOverflow;
     }
 
+    if (!hint_is_valid)
+    {
+        order->second.level_index =
+            static_cast<std::size_t>(level - levels.begin());
+    }
     level->quantity = level->quantity - old_quantity + event.quantity;
     order->second.quantity = event.quantity;
     return ApplyResult::Applied;

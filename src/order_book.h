@@ -62,10 +62,13 @@ public:
     [[nodiscard]] bool empty() const noexcept;
 
 private:
+    friend struct OrderBookTestPeer;
+
     struct OrderNode
     {
         std::int64_t price_ticks{};
         std::uint64_t quantity{};
+        std::size_t level_index{};
         Side side{};
         OrderId previous{};
         OrderId next{};

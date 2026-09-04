@@ -89,11 +89,13 @@ The book owns three principal containers:
 - `_bids` is a vector of price levels sorted from highest to lowest price.
 - `_asks` is a vector of price levels sorted from lowest to highest price.
 
-An `OrderNode` stores price, quantity, side, and the previous and next order IDs
-at the same price. A `LevelState` stores aggregate quantity, order count, and
-the first and last IDs in that FIFO chain. Links use IDs rather than pointers,
-so movement of vector elements and rehashing of the order index do not invalidate
-the links.
+An `OrderNode` stores price, quantity, side, a cached numeric level index, and
+the previous and next order IDs at the same price. A `LevelState` stores
+aggregate quantity, order count, and the first and last IDs in that FIFO chain.
+Links use IDs rather than pointers, so movement of vector elements and rehashing
+of the order index do not invalidate the links. The cached level index is a hint:
+updates validate both its bounds and price before use, falling back to price
+lookup and lazily repairing it after level insertion or erasure makes it stale.
 
 The public `PriceLevel` and `OrderView` types are snapshots. They expose book
 state without exposing internal nodes or iterators.
@@ -160,15 +162,17 @@ Common work includes:
 - instrument and order-ID validation;
 - action dispatch;
 - hash-table lookup by order ID;
-- binary search over the selected side's price-level vector;
+- validated cached-level access or price-level lookup;
 - aggregate quantity and FIFO-link maintenance.
 
 Adds may allocate an order-index node. The constructor reserves the expected
 number of orders, which defaults to 1,024, and reserves 64 levels on each side.
-A new level can shift later vector elements. Updates perform lookups and mutate
-existing state without intentionally allocating. Deletes unlink neighboring
-orders, erase a hash-table entry, and may shift levels when an empty level is
-removed.
+A new level can shift later vector elements. Updates validate the order's
+cached numeric level index and avoid binary search while it still identifies
+the expected price; a stale hint falls back to binary search and is repaired.
+Updates mutate existing state without intentionally allocating. Deletes unlink
+neighboring orders, erase a hash-table entry, and may shift levels when an
+empty level is removed.
 
 Best bid and best ask queries read the first element of their respective
 vectors. Formatting through `MarketDataEvent::to_str()` and console output are

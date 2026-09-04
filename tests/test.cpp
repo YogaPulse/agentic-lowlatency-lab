@@ -3,6 +3,14 @@
 #include <synthetic_feed.h>
 #include <instrument_registry.h>
 
+struct OrderBookTestPeer
+{
+    static std::size_t level_index(const OrderBook& book, OrderId order_id)
+    {
+        return book._orders.at(order_id).level_index;
+    }
+};
+
 namespace
 {
 MarketDataEvent event(
@@ -88,6 +96,16 @@ TEST(OrderBookTest, AddAsk) {
     EXPECT_EQ(book.level_count(Side::Sell), 1);
 }
 
+TEST(OrderBookTest, CachesNonzeroLevelIndexOnAdd) {
+    OrderBook book{1};
+    ASSERT_EQ(book.apply(event(Action::Add, Side::Buy, 101, 10, 1, 1)), ApplyResult::Applied);
+    ASSERT_EQ(book.apply(event(Action::Add, Side::Buy, 100, 20, 1, 2)), ApplyResult::Applied);
+
+    ASSERT_EQ(book.level_count(Side::Buy), 2);
+    EXPECT_EQ(OrderBookTestPeer::level_index(book, 2), 1);
+    EXPECT_EQ(book.quantity_at(Side::Buy, 100), 20);
+}
+
 TEST(OrderBookTest, UpdateBid) {
     OrderBook book{1};
     ASSERT_EQ(book.apply(event(Action::Add, Side::Buy, 100, 10)), ApplyResult::Applied);
@@ -101,6 +119,56 @@ TEST(OrderBookTest, UpdateAsk) {
     ASSERT_EQ(book.apply(event(Action::Add, Side::Sell, 102, 20)), ApplyResult::Applied);
 
     EXPECT_EQ(book.apply(event(Action::Update, Side::Sell, 102, 35)), ApplyResult::Applied);
+    EXPECT_EQ(book.quantity_at(Side::Sell, 102), 35);
+}
+
+TEST(OrderBookTest, LazilyRepairsStaleLevelIndexHint) {
+    OrderBook book{1};
+    ASSERT_EQ(book.apply(event(Action::Add, Side::Buy, 100, 10, 1, 1)), ApplyResult::Applied);
+
+    // Inserting a better bid shifts the existing level without eagerly updating
+    // the order's cached index.
+    ASSERT_EQ(book.apply(event(Action::Add, Side::Buy, 101, 20, 1, 2)), ApplyResult::Applied);
+    ASSERT_TRUE(book.best_bid().has_value());
+    ASSERT_EQ(book.best_bid()->price_ticks, 101);
+    ASSERT_EQ(OrderBookTestPeer::level_index(book, 1), 0);
+
+    // The stale hint falls back to price lookup and is repaired to index 1.
+    ASSERT_EQ(book.apply(event(Action::Update, Side::Buy, 100, 15, 1, 1)), ApplyResult::Applied);
+    ASSERT_EQ(OrderBookTestPeer::level_index(book, 1), 1);
+    EXPECT_EQ(book.quantity_at(Side::Buy, 100), 15);
+
+    // A subsequent update uses the repaired hint and preserves the aggregate.
+    ASSERT_EQ(book.apply(event(Action::Update, Side::Buy, 100, 25, 1, 1)), ApplyResult::Applied);
+    EXPECT_EQ(OrderBookTestPeer::level_index(book, 1), 1);
+    EXPECT_EQ(book.quantity_at(Side::Buy, 100), 25);
+
+    // Removing the preceding level makes the repaired hint out of bounds; the
+    // same fallback repairs that form of staleness as well.
+    ASSERT_EQ(book.apply(event(Action::Delete, Side::Buy, 101, 0, 1, 2)), ApplyResult::Applied);
+    ASSERT_EQ(OrderBookTestPeer::level_index(book, 1), 1);
+    ASSERT_EQ(book.apply(event(Action::Update, Side::Buy, 100, 30, 1, 1)), ApplyResult::Applied);
+    EXPECT_EQ(OrderBookTestPeer::level_index(book, 1), 0);
+    EXPECT_EQ(book.quantity_at(Side::Buy, 100), 30);
+}
+
+TEST(OrderBookTest, LazilyRepairsStaleAskLevelIndexHint) {
+    OrderBook book{1};
+    ASSERT_EQ(book.apply(event(Action::Add, Side::Sell, 102, 20, 1, 1)), ApplyResult::Applied);
+
+    // Inserting a better ask shifts the existing level and makes its cached
+    // index stale.
+    ASSERT_EQ(book.apply(event(Action::Add, Side::Sell, 101, 10, 1, 2)), ApplyResult::Applied);
+    ASSERT_EQ(OrderBookTestPeer::level_index(book, 1), 0);
+
+    // The first update falls back to lookup and repairs the ask-side hint.
+    ASSERT_EQ(book.apply(event(Action::Update, Side::Sell, 102, 25, 1, 1)), ApplyResult::Applied);
+    ASSERT_EQ(OrderBookTestPeer::level_index(book, 1), 1);
+    EXPECT_EQ(book.quantity_at(Side::Sell, 102), 25);
+
+    // The repaired index remains valid for the subsequent update.
+    ASSERT_EQ(book.apply(event(Action::Update, Side::Sell, 102, 35, 1, 1)), ApplyResult::Applied);
+    EXPECT_EQ(OrderBookTestPeer::level_index(book, 1), 1);
     EXPECT_EQ(book.quantity_at(Side::Sell, 102), 35);
 }
 
