@@ -406,3 +406,38 @@ For non-trivial implementation requests:
    without human approval.
 10. Do not update benchmark baselines as part of this workflow unless explicitly
     requested by the human.
+
+# Continuous Integration
+
+GitHub Actions provides independent clean-environment build and test
+validation.
+
+Local agent validation and CI serve different purposes.
+
+For local C++ changes:
+
+- continue to use `build_project()` and `run_tests()`;
+- continue to use `compare_benchmarks()` for performance-sensitive changes;
+- do not treat local success as proof that CI will succeed.
+
+Do not modify the CI workflow merely to make a failing implementation pass.
+
+Do not weaken or remove CI checks without an explicit task requiring a CI
+policy change.
+
+When CI fails because of an implementation defect, fix the implementation
+rather than weakening, skipping, or removing the failing validation.
+
+Do not:
+- disable failing tests;
+- remove CI steps;
+- ignore test failures;
+- change expected results merely to obtain a green CI run;
+
+unless the task explicitly requires changing that behavior and the change is
+justified.
+
+Changes under `.github/workflows/` are validation-policy changes.
+
+Treat them separately from normal implementation changes and explain why a
+CI workflow modification is required.

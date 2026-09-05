@@ -11,10 +11,10 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Install build tools
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -22,7 +22,7 @@ jobs:
             ninja-build \
             g++
 
-      - name: Configure
+      - name: Configure Release build
         run: |
           cmake \
             -S . \
@@ -34,7 +34,7 @@ jobs:
         run: |
           cmake --build build -j 2
 
-      - name: Test
+      - name: Run tests
         run: |
           ctest \
             --test-dir build \
