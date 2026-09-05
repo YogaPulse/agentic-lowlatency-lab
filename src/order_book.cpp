@@ -232,6 +232,16 @@ std::optional<PriceLevel> OrderBook::best_ask() const noexcept
     return _asks.empty() ? std::nullopt : std::optional{level_view(_asks.front())};
 }
 
+std::optional<PriceLevel> OrderBook::level_at(
+    Side side,
+    std::size_t depth) const noexcept
+{
+    const auto& levels = side == Side::Buy ? _bids : _asks;
+    return depth < levels.size()
+        ? std::optional{level_view(levels[depth])}
+        : std::nullopt;
+}
+
 std::optional<std::uint64_t> OrderBook::quantity_at(
     Side side,
     std::int64_t price_ticks) const noexcept

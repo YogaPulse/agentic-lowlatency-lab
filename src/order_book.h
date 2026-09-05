@@ -47,6 +47,11 @@ public:
     [[nodiscard]] std::uint32_t instrument_id() const noexcept;
     [[nodiscard]] std::optional<PriceLevel> best_bid() const noexcept;
     [[nodiscard]] std::optional<PriceLevel> best_ask() const noexcept;
+    // Returns an owned snapshot at zero-based best-to-worst depth, or nullopt
+    // when depth is outside the selected side's levels.
+    [[nodiscard]] std::optional<PriceLevel> level_at(
+        Side side,
+        std::size_t depth) const noexcept;
     [[nodiscard]] std::optional<std::uint64_t> quantity_at(
         Side side,
         std::int64_t price_ticks) const noexcept;

@@ -3,6 +3,8 @@
 #include <synthetic_feed.h>
 #include <instrument_registry.h>
 
+#include <limits>
+
 struct OrderBookTestPeer
 {
     static std::size_t level_index(const OrderBook& book, OrderId order_id)
@@ -224,6 +226,119 @@ TEST(OrderBookTest, MultiplePriceLevels) {
     EXPECT_EQ(book.level_count(Side::Sell), 3);
     EXPECT_EQ(book.quantity_at(Side::Buy, 99), 10);
     EXPECT_EQ(book.quantity_at(Side::Sell, 104), 60);
+}
+
+TEST(OrderBookTest, LevelAtReturnsNulloptForMissingDepths) {
+    for (const auto side : {Side::Buy, Side::Sell})
+    {
+        SCOPED_TRACE(static_cast<int>(side));
+        OrderBook book{1};
+        const auto other_side = side == Side::Buy ? Side::Sell : Side::Buy;
+
+        EXPECT_FALSE(book.level_at(side, 0).has_value());
+        EXPECT_FALSE(book.level_at(side, std::numeric_limits<std::size_t>::max()).has_value());
+
+        ASSERT_EQ(book.apply(event(Action::Add, side, 100, 10)), ApplyResult::Applied);
+        const OrderBook& view = book;
+        static_assert(noexcept(view.level_at(side, 0)));
+        const auto level = view.level_at(side, 0);
+        ASSERT_TRUE(level.has_value());
+        EXPECT_EQ(level->price_ticks, 100);
+        EXPECT_EQ(level->quantity, 10);
+        EXPECT_EQ(level->order_count, 1);
+        EXPECT_FALSE(view.level_at(other_side, 0).has_value());
+        EXPECT_FALSE(view.level_at(side, view.level_count(side)).has_value());
+        EXPECT_FALSE(view.level_at(side, std::numeric_limits<std::size_t>::max()).has_value());
+    }
+}
+
+TEST(OrderBookTest, LevelAtReturnsLevelsInBestToWorstOrder) {
+    OrderBook book{1};
+    ASSERT_EQ(book.apply(event(Action::Add, Side::Buy, 100, 20, 1, 1)), ApplyResult::Applied);
+    ASSERT_EQ(book.apply(event(Action::Add, Side::Buy, 99, 10, 1, 2)), ApplyResult::Applied);
+    ASSERT_EQ(book.apply(event(Action::Add, Side::Buy, 101, 30, 1, 3)), ApplyResult::Applied);
+    ASSERT_EQ(book.apply(event(Action::Add, Side::Sell, 103, 50, 1, 4)), ApplyResult::Applied);
+    ASSERT_EQ(book.apply(event(Action::Add, Side::Sell, 104, 60, 1, 5)), ApplyResult::Applied);
+    ASSERT_EQ(book.apply(event(Action::Add, Side::Sell, 102, 40, 1, 6)), ApplyResult::Applied);
+
+    for (std::size_t depth = 0; depth < 3; ++depth)
+    {
+        SCOPED_TRACE(depth);
+        const auto bid = book.level_at(Side::Buy, depth);
+        const auto ask = book.level_at(Side::Sell, depth);
+        ASSERT_TRUE(bid.has_value());
+        ASSERT_TRUE(ask.has_value());
+        EXPECT_EQ(bid->price_ticks, 101 - static_cast<std::int64_t>(depth));
+        EXPECT_EQ(bid->quantity, 30 - 10 * depth);
+        EXPECT_EQ(bid->order_count, 1);
+        EXPECT_EQ(ask->price_ticks, 102 + static_cast<std::int64_t>(depth));
+        EXPECT_EQ(ask->quantity, 40 + 10 * depth);
+        EXPECT_EQ(ask->order_count, 1);
+    }
+
+    for (const auto side : {Side::Buy, Side::Sell})
+    {
+        SCOPED_TRACE(static_cast<int>(side));
+        const auto level = book.level_at(side, 0);
+        const auto best = side == Side::Buy ? book.best_bid() : book.best_ask();
+        ASSERT_TRUE(level.has_value());
+        ASSERT_TRUE(best.has_value());
+        EXPECT_EQ(level->price_ticks, best->price_ticks);
+        EXPECT_EQ(level->quantity, best->quantity);
+        EXPECT_EQ(level->order_count, best->order_count);
+        EXPECT_FALSE(book.level_at(side, 3).has_value());
+    }
+}
+
+TEST(OrderBookTest, LevelAtTracksAggregatesAndRankChangesWithIndependentSnapshots) {
+    for (const auto side : {Side::Buy, Side::Sell})
+    {
+        SCOPED_TRACE(static_cast<int>(side));
+        OrderBook book{1};
+        ASSERT_EQ(book.apply(event(Action::Add, side, 100, 10, 1, 1)), ApplyResult::Applied);
+        ASSERT_EQ(book.apply(event(Action::Add, side, 100, 20, 1, 2)), ApplyResult::Applied);
+        const auto snapshot = book.level_at(side, 0);
+        ASSERT_TRUE(snapshot.has_value());
+        EXPECT_EQ(snapshot->price_ticks, 100);
+        EXPECT_EQ(snapshot->quantity, 30);
+        EXPECT_EQ(snapshot->order_count, 2);
+
+        const auto better_price = side == Side::Buy ? 101 : 99;
+        ASSERT_EQ(book.apply(event(Action::Add, side, better_price, 40, 1, 3)), ApplyResult::Applied);
+        const auto shifted = book.level_at(side, 1);
+        ASSERT_TRUE(shifted.has_value());
+        EXPECT_EQ(shifted->price_ticks, 100);
+        EXPECT_EQ(shifted->quantity, 30);
+        EXPECT_EQ(shifted->order_count, 2);
+
+        ASSERT_EQ(book.apply(event(Action::Update, side, 100, 15, 1, 1)), ApplyResult::Applied);
+        const auto updated = book.level_at(side, 1);
+        ASSERT_TRUE(updated.has_value());
+        EXPECT_EQ(updated->price_ticks, 100);
+        EXPECT_EQ(updated->quantity, 35);
+        EXPECT_EQ(updated->order_count, 2);
+
+        ASSERT_EQ(book.apply(event(Action::Delete, side, 100, 0, 1, 2)), ApplyResult::Applied);
+        const auto remaining = book.level_at(side, 1);
+        ASSERT_TRUE(remaining.has_value());
+        EXPECT_EQ(remaining->price_ticks, 100);
+        EXPECT_EQ(remaining->quantity, 15);
+        EXPECT_EQ(remaining->order_count, 1);
+
+        ASSERT_EQ(book.apply(event(Action::Delete, side, better_price, 0, 1, 3)), ApplyResult::Applied);
+        const auto promoted = book.level_at(side, 0);
+        ASSERT_TRUE(promoted.has_value());
+        EXPECT_EQ(promoted->price_ticks, 100);
+        EXPECT_EQ(promoted->quantity, 15);
+        EXPECT_EQ(promoted->order_count, 1);
+        EXPECT_FALSE(book.level_at(side, 1).has_value());
+
+        ASSERT_EQ(book.apply(event(Action::Delete, side, 100, 0, 1, 1)), ApplyResult::Applied);
+        EXPECT_FALSE(book.level_at(side, 0).has_value());
+        EXPECT_EQ(snapshot->price_ticks, 100);
+        EXPECT_EQ(snapshot->quantity, 30);
+        EXPECT_EQ(snapshot->order_count, 2);
+    }
 }
 
 TEST(OrderBookTest, RejectsInvalidEventsWithoutMutation) {
